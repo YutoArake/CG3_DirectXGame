@@ -34,14 +34,17 @@ Object3d::VertexPosNormalUv Object3d::vertices[vertexCount];
 //unsigned short Object3d::indices[planeCount * 3];
 // 1-3書き換え
 unsigned short Object3d::indices[indexCount];
+// ビルボード
+XMMATRIX Object3d::matBillboard = XMMatrixIdentity();
+XMMATRIX Object3d::matBillboardY = XMMatrixIdentity();
 
-void Object3d::StaticInitialize(ID3D12Device * device, int window_width, int window_height)
+void Object3d::StaticInitialize(ID3D12Device* device, int window_width, int window_height)
 {
 	// nullptrチェック
 	assert(device);
 
 	Object3d::device = device;
-		
+
 	// デスクリプタヒープの初期化
 	InitializeDescriptorHeap();
 
@@ -59,7 +62,7 @@ void Object3d::StaticInitialize(ID3D12Device * device, int window_width, int win
 
 }
 
-void Object3d::PreDraw(ID3D12GraphicsCommandList * cmdList)
+void Object3d::PreDraw(ID3D12GraphicsCommandList* cmdList)
 {
 	// PreDrawとPostDrawがペアで呼ばれていなければエラー
 	assert(Object3d::cmdList == nullptr);
@@ -81,7 +84,7 @@ void Object3d::PostDraw()
 	Object3d::cmdList = nullptr;
 }
 
-Object3d * Object3d::Create()
+Object3d* Object3d::Create()
 {
 	// 3Dオブジェクトのインスタンスを生成
 	Object3d* object3d = new Object3d();
@@ -143,7 +146,7 @@ void Object3d::CameraMoveEyeVector(XMFLOAT3 move) {
 void Object3d::InitializeDescriptorHeap()
 {
 	HRESULT result = S_FALSE;
-	
+
 	// デスクリプタヒープを生成	
 	D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = {};
 	descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -167,7 +170,7 @@ void Object3d::InitializeCamera(int window_width, int window_height)
 		XMLoadFloat3(&target),
 		XMLoadFloat3(&up));*/
 
-	// ビュー行列の計算
+		// ビュー行列の計算
 	UpdateViewMatrix();
 
 	// 平行投影による射影行列の生成
@@ -337,7 +340,7 @@ void Object3d::LoadTexture()
 	ScratchImage scratchImg{};
 
 	// WICテクスチャのロード
-	result = LoadFromWICFile( L"Resources/tex1.png", WIC_FLAGS_NONE, &metadata, scratchImg);
+	result = LoadFromWICFile(L"Resources/tex1.png", WIC_FLAGS_NONE, &metadata, scratchImg);
 	assert(SUCCEEDED(result));
 
 	ScratchImage mipChain{};
@@ -604,14 +607,15 @@ void Object3d::UpdateViewMatrix()
 	// ビュー行列の更新
 	// matView = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 
-	// 1-5
-	// 視点座標
+#pragma region 1-5 ビュー行列の実装
+		// 視点座標
 	XMVECTOR eyePosition = XMLoadFloat3(&eye);
 	// 注視点座標
 	XMVECTOR targetPosition = XMLoadFloat3(&target);
 	// (仮の)上方向
 	XMVECTOR upVector = XMLoadFloat3(&up);
 
+#pragma region Z軸視線方向
 	// カメラZ軸(視線方向)
 	XMVECTOR cameraAxisZ = XMVectorSubtract(targetPosition, eyePosition);
 
@@ -623,7 +627,8 @@ void Object3d::UpdateViewMatrix()
 
 	// ベクトルを正規化
 	cameraAxisZ = XMVector3Normalize(cameraAxisZ);
-
+#pragma endregion
+#pragma region X軸視線方向
 	// カメラのX軸(右方向)
 	XMVECTOR cameraAxisX;
 	// X軸は上方向→Z軸の外積で求まる
@@ -631,14 +636,17 @@ void Object3d::UpdateViewMatrix()
 	// ベクトルを正規化
 	cameraAxisX = XMVector3Normalize(cameraAxisX);
 
+#pragma endregion
+#pragma region Y軸視線方向
 	// カメラのY軸(上方向)
 	XMVECTOR cameraAxisY;
 	// Y軸はZ軸→X軸の外積で求まる
 	cameraAxisY = XMVector3Cross(cameraAxisZ, cameraAxisX);
 	// ベクトルを正規化
 	// cameraAxisY = XMVector3Normalize(cameraAxisY);
+#pragma endregion
 
-	// カメラ回転行列
+		// カメラ回転行列
 	XMMATRIX matCameraRot;
 	// カメラ座標系→ワールド座標系の変換行列
 	matCameraRot.r[0] = cameraAxisX;
@@ -660,6 +668,34 @@ void Object3d::UpdateViewMatrix()
 
 	// ビュー行列に平行移動成分を設定
 	matView.r[3] = translation;
+#pragma endregion
+
+	// 1-6 ビルボードの実装
+#pragma region 全方向ビルボード行列の計算
+	// ビルボード行列
+	matBillboard.r[0] = cameraAxisX;
+	matBillboard.r[1] = cameraAxisY;
+	matBillboard.r[2] = cameraAxisZ;
+	matBillboard.r[3] = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+#pragma endregion
+
+#pragma region Y軸周りビルボード行列の計算
+	// カメラX軸、Y軸、Z軸
+	XMVECTOR ybillCameraAxisX, ybillCameraAxisY, ybillCameraAxisZ;
+
+	// X軸は共通
+	ybillCameraAxisX = cameraAxisX;
+	// Y軸はワールド座標系のY軸
+	ybillCameraAxisY = XMVector3Normalize(upVector);
+	// Z軸はX軸→Y軸の外積で求まる
+	ybillCameraAxisZ = XMVector3Cross(ybillCameraAxisX, ybillCameraAxisY);
+
+	// Y軸周りビルボード行列
+	matBillboardY.r[0] = ybillCameraAxisX;
+	matBillboardY.r[1] = ybillCameraAxisY;
+	matBillboardY.r[2] = ybillCameraAxisZ;
+	matBillboardY.r[3] = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+#pragma endregion
 }
 
 bool Object3d::Initialize()
@@ -700,9 +736,11 @@ void Object3d::Update()
 
 	// ワールド行列の合成
 	matWorld = XMMatrixIdentity(); // 変形をリセット
-	matWorld *= matScale; // ワールド行列にスケーリングを反映
-	matWorld *= matRot; // ワールド行列に回転を反映
-	matWorld *= matTrans; // ワールド行列に平行移動を反映
+	matWorld *= matScale;				// ワールド行列にスケーリングを反映
+	matWorld *= matRot;					// ワールド行列に回転を反映
+	// matWorld *= matBillboard;		// ビルボード行列を掛ける
+	matWorld *= matBillboardY;		// Y軸ビルボード行列を掛ける
+	matWorld *= matTrans;				// ワールド行列に平行移動を反映
 
 	// 親オブジェクトがあれば
 	if (parent != nullptr) {
@@ -723,7 +761,7 @@ void Object3d::Draw()
 	// nullptrチェック
 	assert(device);
 	assert(Object3d::cmdList);
-		
+
 	// 頂点バッファの設定
 	cmdList->IASetVertexBuffers(0, 1, &vbView);
 	// インデックスバッファの設定

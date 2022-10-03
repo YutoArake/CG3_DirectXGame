@@ -153,6 +153,10 @@ private: // 静的メンバ変数
 	// 1-3書き換え
 	static unsigned short indices[indexCount];
 
+	// ビルボード行列
+	static XMMATRIX matBillboard;
+	static XMMATRIX matBillboardY;
+
 private:// 静的メンバ関数
 	/// <summary>
 	/// デスクリプタヒープの初期化
@@ -226,4 +230,3 @@ private: // メンバ変数
 	// 親オブジェクト
 	Object3d* parent = nullptr;
 };
-
