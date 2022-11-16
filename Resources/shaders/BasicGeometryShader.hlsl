@@ -1,5 +1,26 @@
 #include "BasicShaderHeader.hlsli"
 
+[maxvertexcount(3)]
+void main(
+	point VSOutput input[1] : SV_POSITION,
+	// 点ストリーム
+	inout TriangleStream< GSOutput > output
+)
+{
+	GSOutput element;							// 出力用頂点データ 
+	element.normal = input[0].normal;	// 法線をコピー
+	element.uv = input[0].uv;				// UVをコピー
+	
+	element.svpos = input[0].svpos;		// 頂点座標をコピー
+	output.Append(element);				// 頂点を１つ出力(出力リストに追加)
+
+	element.svpos = input[0].svpos + float4(10.0f, 10.0f, 0.0f, 0.0f);
+	output.Append(element);				// 頂点を１つ出力(出力リストに追加)
+
+	element.svpos = input[0].svpos + float4(10.0f, 0.0f, 0.0f, 0.0f);
+	output.Append(element);				// 頂点を１つ出力(出力リストに追加)
+}
+
 // 三角形の入力から、点を1つ出力するサンプル
 //[maxvertexcount(1)]
 //void main(
@@ -136,32 +157,32 @@
 //}
 
 // 三角形の入力から、三角形を2つ出力
-[maxvertexcount(6)]
-void main(
-	triangle VSOutput input[3] : SV_POSITION,
-	// 点ストリーム
-	inout TriangleStream< GSOutput > output
-)
-{
-	// 1つ目の三角形
-	for (uint i = 0; i < 3; i++) {
-		GSOutput element;							// 出力用頂点データ 
-		element.svpos = input[i].svpos;		// 頂点座標をコピー
-		element.normal = input[i].normal;	// 法線をコピー
-		element.uv = input[i].uv;				// UVをコピー
-		output.Append(element);				// 頂点を１つ出力(出力リストに追加)
-	}
-	// 現在のストリップを終了
-	output.RestartStrip();
-
-	// 2つ目の三角形
-	for (uint i = 0; i < 3; i++) {
-		GSOutput element;							// 出力用頂点データ 
-		// X方向に20ずらす
-		element.svpos = input[i].svpos + float4(20.0f, 0.0f, 0.0f, 0.0f);		// 頂点座標をコピー
-		element.normal = input[i].normal;	// 法線をコピー
-		// UVを5倍に
-		element.uv = input[i].uv * 5.0f;		// UVをコピー
-		output.Append(element);				// 頂点を１つ出力(出力リストに追加)
-	}
-}
+//[maxvertexcount(6)]
+//void main(
+//	triangle VSOutput input[3] : SV_POSITION,
+//	// 点ストリーム
+//	inout TriangleStream< GSOutput > output
+//)
+//{
+//	// 1つ目の三角形
+//	for (uint i = 0; i < 3; i++) {
+//		GSOutput element;							// 出力用頂点データ 
+//		element.svpos = input[i].svpos;		// 頂点座標をコピー
+//		element.normal = input[i].normal;	// 法線をコピー
+//		element.uv = input[i].uv;				// UVをコピー
+//		output.Append(element);				// 頂点を１つ出力(出力リストに追加)
+//	}
+//	// 現在のストリップを終了
+//	output.RestartStrip();
+//
+//	// 2つ目の三角形
+//	for (uint i = 0; i < 3; i++) {
+//		GSOutput element;							// 出力用頂点データ 
+//		// X方向に20ずらす
+//		element.svpos = input[i].svpos + float4(20.0f, 0.0f, 0.0f, 0.0f);		// 頂点座標をコピー
+//		element.normal = input[i].normal;	// 法線をコピー
+//		// UVを5倍に
+//		element.uv = input[i].uv * 5.0f;		// UVをコピー
+//		output.Append(element);				// 頂点を１つ出力(出力リストに追加)
+//	}
+//}
