@@ -56,7 +56,7 @@ void GameScene::Initialize(DirectXCommon* dxCommon, Input* input)
 		acc.y = -(float)rand() / RAND_MAX * rnd_acc;
 
 		// 追加
-		particleM->Add(60, pos, vel, acc);
+		particleM->Add(60, pos, vel, acc, 1.0f, 0.0f);
 	}
 	
 	particleM->Update();

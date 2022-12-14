@@ -30,8 +30,10 @@ void main(
 	GSOutput element;							// 出力用頂点データ 
 
 	for (uint i = 0; i < vnum; i++) {
+		// 中心からのオフセットをスケーリング
+		float4 offset = offset_array[i] * input[0].scale;
 		// 中心からのオフセットをビルボード回転（モデル座標）
-		float4 offset = mul(matBillbord, offset_array[i]);
+		offset = mul(matBillbord, offset);
 		// ワールド座標ベースで、ずらす
 		element.svpos = input[0].pos + offset;
 		// ビュー、射影変換
